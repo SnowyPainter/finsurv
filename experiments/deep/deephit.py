@@ -175,14 +175,18 @@ def split_metrics(
     prob: torch.Tensor,
     horizon: int,
     ipcw_cache: IPCWCache,
+    compute_uno: bool,
     use_tqdm: bool,
     split_name: str = "",
 ) -> tuple[dict[str, float], pd.DataFrame, np.ndarray]:
-    pmf_up, pmf_down, cif_up, cif_down, p_no_hit = extract_probs(prob, horizon)
+    _, _, cif_up_t, cif_down_t, p_no_hit_t = extract_probs(prob, horizon)
 
-    p_up_h = cif_up[:, horizon - 1].cpu().numpy()
-    p_down_h = cif_down[:, horizon - 1].cpu().numpy()
-    p_no_h = torch.clamp(p_no_hit, 0.0, 1.0).cpu().numpy()
+    # Move CIF tensors to CPU once to avoid repeated GPU->CPU sync in loops.
+    cif_up = cif_up_t.cpu().numpy()
+    cif_down = cif_down_t.cpu().numpy()
+    p_no_h = np.clip(p_no_hit_t.cpu().numpy(), 0.0, 1.0)
+    p_up_h = cif_up[:, horizon - 1]
+    p_down_h = cif_down[:, horizon - 1]
 
     y_3 = split["event"]
     duration = split["duration"]
@@ -194,23 +198,27 @@ def split_metrics(
     up_top, up_lift = _top_decile(p_up_h, y_up)
     down_top, down_lift = _top_decile(p_down_h, y_down)
 
-    uno_iter = tqdm(
-        total=2,
-        desc=f"Uno {split_name}",
-        dynamic_ncols=True,
-        leave=False,
-        disable=not use_tqdm,
-    )
-    uno_up = uno_c_index(ipcw_cache, duration, y_3, p_up_h, cause=1, horizon=horizon)
-    if use_tqdm:
-        uno_iter.update(1)
-        uno_iter.set_postfix(uno_up=f"{uno_up:.3f}")
+    if compute_uno:
+        uno_iter = tqdm(
+            total=2,
+            desc=f"Uno {split_name}",
+            dynamic_ncols=True,
+            leave=False,
+            disable=not use_tqdm,
+        )
+        uno_up = uno_c_index(ipcw_cache, duration, y_3, p_up_h, cause=1, horizon=horizon)
+        if use_tqdm:
+            uno_iter.update(1)
+            uno_iter.set_postfix(uno_up=f"{uno_up:.3f}")
 
-    uno_down = uno_c_index(ipcw_cache, duration, y_3, p_down_h, cause=2, horizon=horizon)
-    if use_tqdm:
-        uno_iter.update(1)
-        uno_iter.set_postfix(uno_down=f"{uno_down:.3f}")
-        uno_iter.close()
+        uno_down = uno_c_index(ipcw_cache, duration, y_3, p_down_h, cause=2, horizon=horizon)
+        if use_tqdm:
+            uno_iter.update(1)
+            uno_iter.set_postfix(uno_down=f"{uno_down:.3f}")
+            uno_iter.close()
+    else:
+        uno_up = float("nan")
+        uno_down = float("nan")
 
     metrics = {
         "n": int(len(y_3)),
@@ -260,7 +268,10 @@ def time_dependent_metrics(
     split_name: str,
     use_tqdm: bool,
 ) -> tuple[dict[str, float], pd.DataFrame]:
-    _, _, cif_up, cif_down, _ = extract_probs(prob, horizon)
+    _, _, cif_up_t, cif_down_t, _ = extract_probs(prob, horizon)
+    # Move CIF tensors to CPU once to avoid repeated GPU->CPU sync in loops.
+    cif_up = cif_up_t.cpu().numpy()
+    cif_down = cif_down_t.cpu().numpy()
     duration = split["duration"]
     event = split["event"]
 
@@ -276,8 +287,8 @@ def time_dependent_metrics(
         y_up_t = ((event == 1) & (duration <= t)).astype(int)
         y_down_t = ((event == 2) & (duration <= t)).astype(int)
 
-        p_up_t = cif_up[:, t - 1].cpu().numpy()
-        p_down_t = cif_down[:, t - 1].cpu().numpy()
+        p_up_t = cif_up[:, t - 1]
+        p_down_t = cif_down[:, t - 1]
         p_no_t = np.clip(1.0 - p_up_t - p_down_t, 0.0, 1.0)
 
         y_cls_t = np.where((event == 1) & (duration <= t), 1, np.where((event == 2) & (duration <= t), 2, 0))
@@ -610,7 +621,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-epochs", type=int, default=120)
     p.add_argument("--patience", type=int, default=15)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--td-times", type=str, default="5,10,20,30")
+    p.add_argument("--td-times", type=str, default="10,30")
+    p.add_argument(
+        "--postprocess-splits",
+        type=str,
+        default="test",
+        help="Comma-separated splits to compute postprocess metrics for (subset of train,valid,test).",
+    )
+    p.add_argument(
+        "--uno-splits",
+        type=str,
+        default="test",
+        help="Comma-separated splits to run Uno C-index on (subset of postprocess splits).",
+    )
     p.add_argument("--force-retrain", action="store_true", help="Ignore existing model.pt and retrain")
     p.add_argument("--no-tqdm", action="store_true")
     p.add_argument("--outdir", type=Path, default=Path("experiments/deep/outputs/deephit"))
@@ -630,6 +653,23 @@ def main() -> None:
     )
     if not td_times:
         raise ValueError("--td-times must include at least one integer within [1, horizon].")
+
+    valid_split_names = {"train", "valid", "test"}
+    postprocess_splits = [s.strip().lower() for s in args.postprocess_splits.split(",") if s.strip()]
+    if not postprocess_splits:
+        raise ValueError("--postprocess-splits must include at least one split name.")
+    if any(s not in valid_split_names for s in postprocess_splits):
+        raise ValueError("--postprocess-splits must be a subset of: train,valid,test")
+    if "test" not in postprocess_splits:
+        raise ValueError("--postprocess-splits must include test (required for plots and outputs).")
+    postprocess_splits = list(dict.fromkeys(postprocess_splits))
+
+    uno_splits = [s.strip().lower() for s in args.uno_splits.split(",") if s.strip()]
+    if any(s not in valid_split_names for s in uno_splits):
+        raise ValueError("--uno-splits must be a subset of: train,valid,test")
+    if any(s not in postprocess_splits for s in uno_splits):
+        raise ValueError("--uno-splits must be a subset of --postprocess-splits")
+    uno_splits = set(uno_splits)
 
     df = load_gold_dataset(args.data_path, min_date=args.min_date, max_date=args.max_date)
     feature_cols = select_technical_feature_columns(df)
@@ -714,11 +754,16 @@ def main() -> None:
         )
         print(f"[fit] saved model: {model_path}")
 
+    frames_by_split = {
+        "train": splits.train,
+        "valid": splits.valid,
+        "test": splits.test,
+    }
+
     t0 = time.perf_counter()
     probs = {
-        "train": predict_prob(out.model, splits.train, splits.feature_cols, args.batch_size, use_tqdm=use_tqdm),
-        "valid": predict_prob(out.model, splits.valid, splits.feature_cols, args.batch_size, use_tqdm=use_tqdm),
-        "test": predict_prob(out.model, splits.test, splits.feature_cols, args.batch_size, use_tqdm=use_tqdm),
+        split_name: predict_prob(out.model, frames_by_split[split_name], splits.feature_cols, args.batch_size, use_tqdm=use_tqdm)
+        for split_name in postprocess_splits
     }
     print(f"[time] prediction={time.perf_counter() - t0:.1f}s")
 
@@ -729,7 +774,7 @@ def main() -> None:
             "duration": frame[DURATION_COL].to_numpy(dtype=int),
             "event": frame[EVENT_COL].to_numpy(dtype=int),
         }
-        for name, frame in [("train", splits.train), ("valid", splits.valid), ("test", splits.test)]
+        for name, frame in frames_by_split.items()
     }
     ipcw_cache = build_ipcw_cache(split_arrays["train"]["duration"], split_arrays["train"]["event"])
 
@@ -739,7 +784,7 @@ def main() -> None:
     td_summary: dict[str, dict[str, float]] = {}
     td_frames: dict[str, pd.DataFrame] = {}
 
-    split_items = [("train", splits.train), ("valid", splits.valid), ("test", splits.test)]
+    split_items = [(name, None) for name in postprocess_splits]
     split_iter = tqdm(
         split_items,
         desc="Postprocess Split",
@@ -756,6 +801,7 @@ def main() -> None:
             probs[split_name],
             args.horizon,
             ipcw_cache,
+            compute_uno=split_name in uno_splits,
             use_tqdm=use_tqdm,
             split_name=split_name,
         )
@@ -812,6 +858,8 @@ def main() -> None:
             "patience": args.patience,
             "seed": args.seed,
             "td_times": td_times,
+            "postprocess_splits": postprocess_splits,
+            "uno_splits": sorted(uno_splits),
             "winsor_lower_q": args.winsor_lower_q,
             "winsor_upper_q": args.winsor_upper_q,
             "extreme_abs_threshold": args.extreme_abs_threshold,

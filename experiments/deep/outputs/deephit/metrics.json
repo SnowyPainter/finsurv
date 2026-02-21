@@ -1,0 +1,181 @@
+{
+  "config": {
+    "data_path": "data/gold/survival_dataset.parquet",
+    "horizon": 30,
+    "features_used": [
+      "logret_1",
+      "ret_5",
+      "ret_20",
+      "ret_60",
+      "vol_20",
+      "vol_60",
+      "dist_sma_20",
+      "dist_sma_100",
+      "volm_z_20",
+      "volm_z_60",
+      "hl_range",
+      "oc_return",
+      "atrp_14",
+      "rsi_14",
+      "bb_width_20",
+      "bb_pos_20",
+      "macd_hist",
+      "obv_ret_5",
+      "mom_10_20"
+    ],
+    "hidden_dim": 128,
+    "dropout": 0.2,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "batch_size": 4096,
+    "max_epochs": 30,
+    "patience": 15,
+    "seed": 42,
+    "td_times": [
+      10,
+      30
+    ],
+    "postprocess_splits": [
+      "test"
+    ],
+    "uno_splits": [
+      "test"
+    ],
+    "winsor_lower_q": 0.005,
+    "winsor_upper_q": 0.995,
+    "extreme_abs_threshold": 10000.0,
+    "train_end": "2021-01-07 05:00:00+00:00",
+    "valid_end": "2022-04-22 04:00:00+00:00"
+  },
+  "data_quality": {
+    "before_sanitize": {
+      "phase": {
+        "name": "before_sanitize"
+      },
+      "train": {
+        "rows": 736494,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 3352.0555555555557
+      },
+      "valid": {
+        "rows": 162034,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 1364.892857142857
+      },
+      "test": {
+        "rows": 162688,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 1388.0284360189573
+      }
+    },
+    "after_winsor": {
+      "phase": {
+        "name": "after_winsor"
+      },
+      "train": {
+        "rows": 736494,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 81.56051830871242
+      },
+      "valid": {
+        "rows": 162034,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 81.56051830871242
+      },
+      "test": {
+        "rows": 162688,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 81.56051830871242
+      }
+    },
+    "after_scale": {
+      "phase": {
+        "name": "after_scale"
+      },
+      "train": {
+        "rows": 736494,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 7.233731742920198
+      },
+      "valid": {
+        "rows": 162034,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 7.233731742920198
+      },
+      "test": {
+        "rows": 162688,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 7.233731742920198
+      }
+    },
+    "rows": {
+      "train_before_clean": 736494,
+      "valid_before_clean": 162034,
+      "test_before_clean": 162688,
+      "train_after_clean": 736494,
+      "valid_after_clean": 162034,
+      "test_after_clean": 162688
+    },
+    "winsor_config": {
+      "winsor_lower_q": 0.005,
+      "winsor_upper_q": 0.995,
+      "extreme_abs_threshold": 10000.0
+    }
+  },
+  "best_valid_loss": 3.930493932962418,
+  "metrics": {
+    "test": {
+      "n": 162688,
+      "event_rate_up": 0.2801005605822187,
+      "event_rate_down": 0.24714791502753738,
+      "mean_p_up_30d": 0.4613167345523834,
+      "mean_p_down_30d": 0.44728103280067444,
+      "mean_p_no_hit_30d": 0.09140229225158691,
+      "sum_prob_le_1_rate": 1.0,
+      "brier_up": 0.21958302038167707,
+      "brier_down": 0.23319652940376712,
+      "ece_up": 0.18122224406742055,
+      "ece_down": 0.2013058845147221,
+      "top_decile_hit_up": 0.501536759282026,
+      "top_decile_lift_up": 1.7905596412928582,
+      "top_decile_hit_down": 0.1932013769363167,
+      "top_decile_lift_down": 0.7817236771541854,
+      "td_auc_up_30d": 0.6780213430829194,
+      "td_auc_down_30d": 0.4333574985110086,
+      "uno_c_up": 0.6946186244491557,
+      "uno_c_down": 0.4089279488903729,
+      "acc_3class": 0.2869910503540519,
+      "macro_f1_3class": 0.24769503150610794,
+      "ibs_up": 0.14563553657431422,
+      "ibs_down": 0.15516428824973189,
+      "ibs_overall": 0.5556380783363547,
+      "brier_up_30d": 0.21958302038167707,
+      "brier_down_30d": 0.23319652940376712,
+      "brier_overall_30d": 0.8282953667101521,
+      "td_auc_up_mean": 0.7228429852709028,
+      "td_auc_down_mean": 0.5392966971461741
+    }
+  },
+  "notes": [
+    "Competing risks are modeled jointly with one softmax over (no-hit, cause,time) bins.",
+    "CIF_k(t) is computed by cumulative sum of per-time PMF for cause k."
+  ]
+}
