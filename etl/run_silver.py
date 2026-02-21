@@ -61,6 +61,12 @@ with tqdm(total=total_windows, desc="Windows") as window_pbar:
             window_pbar.update(1)
 
 silver_df = pd.DataFrame(rows)
+before = len(silver_df)
+silver_df = silver_df.drop_duplicates(subset=["ticker", "Date"], keep="first").reset_index(drop=True)
+removed = before - len(silver_df)
+
 silver_df.to_parquet(SILVER_DIR / "survival_windows.parquet", index=False)
 
+if removed > 0:
+    print(f"[SILVER] removed duplicate labels: {removed:,}")
 print("Saved SILVER survival windows.")

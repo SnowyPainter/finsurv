@@ -1,0 +1,211 @@
+{
+  "config": {
+    "data_path": "data/gold/survival_dataset.parquet",
+    "horizon": 30,
+    "penalizer": 0.01,
+    "scale_method": "train_standard",
+    "ph_alpha": 0.05,
+    "winsor_lower_q": 0.005,
+    "winsor_upper_q": 0.995,
+    "extreme_abs_threshold": 10000.0,
+    "train_end": "2023-06-02 04:00:00+00:00",
+    "valid_end": "2023-07-06 04:00:00+00:00",
+    "features_used": [
+      "logret_1",
+      "ret_5",
+      "ret_20",
+      "ret_60",
+      "vol_20",
+      "vol_60",
+      "dist_sma_20",
+      "dist_sma_100",
+      "volm_z_20",
+      "volm_z_60",
+      "hl_range",
+      "oc_return",
+      "atrp_14",
+      "rsi_14",
+      "bb_width_20",
+      "bb_pos_20",
+      "macd_hist",
+      "obv_ret_5",
+      "mom_10_20"
+    ]
+  },
+  "metrics": {
+    "up": {
+      "train": {
+        "n": 52605,
+        "event_rate": 0.22716471818268225,
+        "mean_pred_prob": 0.2642841271894692,
+        "c_index": 0.7091321459751719,
+        "brier": 0.16484273294915275,
+        "log_loss": 0.5108288058626141,
+        "ece_10bin": 0.037119409006786896,
+        "top_decile_hit_rate": 0.4785171102661597,
+        "top_decile_lift": 2.106476366991743
+      },
+      "valid": {
+        "n": 11022,
+        "event_rate": 0.3573761567773544,
+        "mean_pred_prob": 0.2184658087860561,
+        "c_index": 0.7191308895448928,
+        "brier": 0.2256282368933351,
+        "log_loss": 0.6500047627691743,
+        "ece_10bin": 0.15136924725547868,
+        "top_decile_hit_rate": 0.6724137931034483,
+        "top_decile_lift": 1.881529532263571
+      },
+      "test": {
+        "n": 11523,
+        "event_rate": 0.11168966414996095,
+        "mean_pred_prob": 0.1987226013697323,
+        "c_index": 0.700142354498005,
+        "brier": 0.1085510028664781,
+        "log_loss": 0.3736518883081679,
+        "ece_10bin": 0.08703293721977133,
+        "top_decile_hit_rate": 0.2439236111111111,
+        "top_decile_lift": 2.18394076987827
+      }
+    },
+    "down": {
+      "train": {
+        "n": 52605,
+        "event_rate": 0.20193897918448817,
+        "mean_pred_prob": 0.24384196424776192,
+        "c_index": 0.6973574328647388,
+        "brier": 0.15326875152756342,
+        "log_loss": 0.47872376514904197,
+        "ece_10bin": 0.04190298506327378,
+        "top_decile_hit_rate": 0.4332699619771863,
+        "top_decile_lift": 2.1455489362524602
+      },
+      "valid": {
+        "n": 11022,
+        "event_rate": 0.06060606060606061,
+        "mean_pred_prob": 0.22005168555016855,
+        "c_index": 0.6458831914397789,
+        "brier": 0.09415797467729742,
+        "log_loss": 0.34304626975223085,
+        "ece_10bin": 0.15944562494410794,
+        "top_decile_hit_rate": 0.11887477313974591,
+        "top_decile_lift": 1.9614337568058076
+      },
+      "test": {
+        "n": 11523,
+        "event_rate": 0.24021522173045215,
+        "mean_pred_prob": 0.22236614163493948,
+        "c_index": 0.6631972327739695,
+        "brier": 0.17252137969512063,
+        "log_loss": 0.5251110755505212,
+        "ece_10bin": 0.030422802601430224,
+        "top_decile_hit_rate": 0.4227430555555556,
+        "top_decile_lift": 1.75985123886079
+      }
+    }
+  },
+  "data_quality": {
+    "before_sanitize": {
+      "phase": {
+        "name": "before_sanitize"
+      },
+      "train": {
+        "rows": 52605,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 158.533484898488
+      },
+      "valid": {
+        "rows": 11022,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 88.86072594386133
+      },
+      "test": {
+        "rows": 11523,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 86.95678914746371
+      }
+    },
+    "after_winsor": {
+      "phase": {
+        "name": "after_winsor"
+      },
+      "train": {
+        "rows": 52605,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 78.07894893396467
+      },
+      "valid": {
+        "rows": 11022,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 78.07894893396467
+      },
+      "test": {
+        "rows": 11523,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 78.07894893396467
+      }
+    },
+    "after_scale": {
+      "phase": {
+        "name": "after_scale"
+      },
+      "train": {
+        "rows": 52605,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 6.673580861750109
+      },
+      "valid": {
+        "rows": 11022,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 6.673580861750109
+      },
+      "test": {
+        "rows": 11523,
+        "nan_count": 0,
+        "inf_count": 0,
+        "abs_gt_threshold_count": 0,
+        "max_abs": 6.673580861750109
+      }
+    },
+    "rows": {
+      "train_before_clean": 52605,
+      "valid_before_clean": 11022,
+      "test_before_clean": 11523,
+      "train_after_clean": 52605,
+      "valid_after_clean": 11022,
+      "test_after_clean": 11523
+    },
+    "winsor_config": {
+      "winsor_lower_q": 0.005,
+      "winsor_upper_q": 0.995,
+      "extreme_abs_threshold": 10000.0
+    }
+  },
+  "ph_violations": {
+    "up": 12,
+    "down": 11
+  },
+  "overall": {
+    "test_direction_accuracy_on_hit": 0.5997533908754624,
+    "mean_test_cif_up_30d": 0.17510254063090153,
+    "mean_test_cif_down_30d": 0.1952116482644074,
+    "mean_test_p_no_hit_30d": 0.63008574156089
+  },
+  "note": "Cause-specific hazards are converted to CIF via numerical integration for 30-day probabilities."
+}

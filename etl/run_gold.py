@@ -1,7 +1,7 @@
 # build_pipeline.py
 from __future__ import annotations
 
-import glob
+import json
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +33,19 @@ MACD_SLOW = 26
 MACD_SIGNAL = 9
 
 MIN_PRICE = 0.5  # optional filter to avoid extreme penny noise
+
+ID_COLS = ["ticker", "Date"]
+LABEL_COLS = ["duration", "event"]
+DROP_COLS = [
+    "start_price",
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume",
+    "Dividends",
+    "Stock Splits",
+]
 
 
 # -----------------------
@@ -73,6 +86,25 @@ def atr(high: pd.Series, low: pd.Series, close: pd.Series, window: int = 14) -> 
 def obv(close: pd.Series, volume: pd.Series) -> pd.Series:
     direction = np.sign(close.diff()).fillna(0)
     return (direction * volume).cumsum()
+
+
+def infer_feature_columns(df: pd.DataFrame) -> list[str]:
+    exclude = set(ID_COLS + LABEL_COLS)
+    return [c for c in df.columns if c not in exclude and pd.api.types.is_numeric_dtype(df[c])]
+
+
+def write_feature_manifest(columns: list[str]) -> None:
+    manifest_path = DATA_ROOT / "available_features.json"
+    text_path = DATA_ROOT / "available_features.txt"
+
+    payload = {
+        "feature_count": len(columns),
+        "features": columns,
+        "scaling": "apply train-fit scaling at experiment time (load_dataset.py)",
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    text_path.write_text("\n".join(columns) + "\n", encoding="utf-8")
+
 
 # -----------------------
 # 3) GOLD: features + merge labels
@@ -148,6 +180,7 @@ def add_features_per_ticker(g: pd.DataFrame) -> pd.DataFrame:
 
 def build_gold(raw_path: Path, silver_path: Path) -> Path:
     GOLD_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_parquet(raw_path)
     df = df.sort_values(["ticker", "Date"])
@@ -165,12 +198,29 @@ def build_gold(raw_path: Path, silver_path: Path) -> Path:
         how="left",
     )
 
+    # Remove duplicated labels on the same observation key.
+    before_rows = len(gold)
+    gold = gold.drop_duplicates(subset=["ticker", "Date"], keep="first").reset_index(drop=True)
+    removed_dupes = before_rows - len(gold)
+
+    # Remove redundant raw/label-like columns.
+    existing_drop = [c for c in DROP_COLS if c in gold.columns]
+    if existing_drop:
+        gold = gold.drop(columns=existing_drop)
+
     # Drop NA rows produced by rolling windows etc.
-    # Keep essential columns + features
-    gold = gold.dropna()
+    gold = gold.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+
+    # Drop constant/invalid columns and write available feature list.
+    gold = gold.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+    feature_cols = infer_feature_columns(gold)
+    write_feature_manifest(feature_cols)
 
     out_path = GOLD_DIR / "survival_dataset.parquet"
     gold.to_parquet(out_path, index=False)
+    if removed_dupes > 0:
+        print(f"[GOLD] removed duplicate labels: {removed_dupes:,}")
+    print(f"[GOLD] feature manifest: {DATA_ROOT / 'available_features.json'}")
     print(f"[GOLD] saved: {out_path} rows={len(gold):,}")
     return out_path
 
